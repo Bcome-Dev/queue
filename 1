@@ -1,0 +1,373 @@
+#include <iostream>      // Ini adalah library (perpustakaan) bawaan C++ yang isinya fungsi input-output, kayak 'cin' buat masukin data dan 'cout' buat nampilin data ke layar.
+#include <string>        // Library ini dipake biar kita bisa pake tipe data 'string', buat nyimpen tulisan kayak nama makanan, kategori, atau catatan.
+using namespace std;     // Ini biar kita nggak perlu nulis 'std::' tiap mau pake fungsi dari library C++, jadi kita cukup tulis 'cout' daripada 'std::cout'.
+
+
+// Struct buat data makanan 🍽️
+struct FoodData {         // 'struct' itu kayak kotak atau wadah buat nyimpen beberapa data yang saling berhubungan. Ini khusus buat data makanan.
+    string food;         // Ini variabel buat nyimpen nama makanan, misalnya "Pizza" atau "Nasi Goreng".
+    int price;           // Buat nyimpen harga makanan, tipe datanya 'int' karena angka, misalnya 50000.
+    string category;     // Nyimpen kategori makanan, kayak "Fast Food" atau "Minuman".
+    bool available;      // Ini buat tau makanan tersedia atau nggak. 'true' artinya ada, 'false' artinya habis.
+    FoodData* next;      // Pointer (penunjuk) ke makanan berikutnya dalam daftar (linked list) — kayak ngasih tau siapa temen di sebelah kita.
+    FoodData* prev;      // Pointer ke makanan sebelumnya dalam daftar, jadi kita bisa maju-mundur lihat daftar makanan.
+};
+
+// Struct buat data pesanan 📝
+struct Order {           // Ini struct buat nyimpen data pesanan pelanggan.
+    string id;           // ID pesanan yang unik, biar pesanan nggak ketuker.
+    string name;         // Nama pelanggan yang mesen makanan.
+    string food;         // Nama makanan yang dipesan.
+    int amount;          // Jumlah makanan yang dipesan.
+    int totalPrice;      // Total harga makanan, hasil dari harga satuan dikali jumlah pesanan.
+    string note;        // Catatan tambahan pelanggan, misalnya "Tanpa sambal" atau "Extra keju".
+    Order* next;        // Pointer ke pesanan berikutnya dalam antrian (queue).
+};
+
+// Variabel global 🌍 — bisa dipake di semua bagian kode.
+FoodData* head = nullptr;    // Pointer ke makanan pertama dalam daftar, 'nullptr' artinya belum ada makanan.
+FoodData* tail = nullptr;    // Pointer ke makanan terakhir dalam daftar.
+FoodData* current = nullptr; // Pointer ke makanan yang lagi dilihat sekarang.
+Order* front = nullptr;      // Pointer ke pesanan paling depan di antrian, yang bakal dilayani pertama kali.
+Order* rear = nullptr;       // Pointer ke pesanan paling belakang di antrian, pesanan yang baru masuk.
+
+// Fungsi buat nampilin data makanan ke layar 🖥️
+void displayFood(FoodData* food) {                   // 'displayFood' adalah fungsi buat nampilin data satu makanan.
+    if (food) {                                      // Cek dulu, kalo makanan ada (nggak 'nullptr'), baru ditampilin.
+        cout << "--------------------------------------\n"; // Garis pemisah biar rapi.
+        cout << "| Food: " << food->food << "\n";       // Nampilin nama makanan.
+        cout << "| Price: Rp " << food->price << "\n";  // Nampilin harga makanan.
+        cout << "| Category: " << food->category << "\n"; // Nampilin kategori makanan.
+        cout << "| Available: " << (food->available ? "Yes" : "No") << "\n"; // Cek ketersediaan, pake operator ternary biar tampil 'Yes' kalo true dan 'No' kalo false.
+        cout << "--------------------------------------\n"; // Garis penutup biar rapi.
+    }
+}
+
+// Fungsi buat nampilin data pesanan ke layar 🖥️
+void displayOrder(Order* order) {                    // 'displayOrder' adalah fungsi buat nampilin data satu pesanan.
+    if (order) {                                     // Cek dulu, kalo pesanan ada, baru ditampilin.
+        cout << "--------------------------------------\n"; // Garis pemisah.
+        cout << "| ID: " << order->id << "\n";         // Nampilin ID pesanan.
+        cout << "| Name: " << order->name << "\n";     // Nampilin nama pelanggan.
+        cout << "| Food: " << order->food << "\n";     // Nampilin nama makanan yang dipesan.
+        cout << "| Amount: " << order->amount << "\n"; // Nampilin jumlah pesanan.
+        cout << "| Total: Rp " << order->totalPrice << "\n"; // Nampilin total harga.
+        cout << "| Note: " << (order->note.empty() ? "No note" : order->note) << "\n"; // Nampilin catatan, kalo nggak ada catatan tampil "No note".
+        cout << "--------------------------------------\n"; // Garis penutup biar rapi.
+    }
+}
+
+// Fungsi buat generate ID pesanan sesuai format 🆔
+string generateOrderId(const string& customerName, const string& foodName, int amount, const string& note) {
+    string id = "";                                // Buat variabel 'id' kosong, nanti kita isi pelan-pelan.
+    
+    // 2 digit pertama: urutan alfabet dari huruf pertama nama customer 🧑‍🍽️
+    id += to_string(toupper(customerName[0]) - 'A' + 1); // Ambil huruf pertama nama customer, ubah jadi huruf besar pake 'toupper'.
+                                                        // Terus cari urutan alfabetnya ('A' jadi 1, 'B' jadi 2, dst.).
+    if (id.length() == 1) id = "0" + id;                 // Kalau urutannya cuma 1 digit (1-9), tambahin "0" di depan biar jadi 2 digit.
+
+    // 4 digit berikutnya: ASCII dari 2 huruf pertama nama makanan 🍔
+    if (foodName.length() >= 2) {                        // Kalau nama makanan panjangnya 2 huruf atau lebih:
+        id += to_string(int(foodName[0]));               // Ambil huruf pertama, ubah ke kode ASCII.
+        id += to_string(int(foodName[1]));               // Ambil huruf kedua, ubah ke kode ASCII.
+    } else {                                            
+        id += "0000";                                    // Kalau nama makanan kurang dari 2 huruf, kasih kode "0000" biar tetap 4 digit.
+    }
+
+    // Digit ke-7: jumlah pesanan 🍽️
+    id += to_string(amount);                             // Tambahin jumlah makanan yang dipesan.
+
+    // Digit ke-8: ada/tidaknya catatan 📝
+    id += (note.empty() ? "0" : "1");                    // Kalau catatannya kosong, tambahin "0". Kalau ada catatan, tambahin "1".
+
+    return id;                                           // Setelah jadi, balikin ID pesanan yang udah lengkap.
+}
+
+// Fungsi buat tambah data makanan baru 🍕
+void addFood() {
+    FoodData* newFood = new FoodData;                    // Buat node baru tipe 'FoodData' pake keyword 'new'.
+    
+    cout << "Food's name: ";                             // Minta nama makanan.
+    getline(cin, newFood->food);                         // Pake 'getline' biar bisa masukin nama makanan yang ada spasinya.
+
+    cout << "Price: ";                                   // Minta harga makanan.
+    cin >> newFood->price;                               // Masukin harga makanan.
+    cin.ignore();                                        // Buat bersihin buffer biar nggak nabrak input berikutnya.
+
+    cout << "Category: ";                                // Minta kategori makanan.
+    getline(cin, newFood->category);                     // Pake 'getline' biar bisa masukin kategori dengan spasi.
+
+    cout << "Available (1 for Yes, 0 for No): ";         // Minta status ketersediaan.
+    cin >> newFood->available;                           // Masukin 1 buat ada, 0 buat nggak ada.
+    cin.ignore();                                        // Lagi-lagi bersihin buffer biar aman.
+
+    newFood->next = nullptr;                             // Karena ini item terakhir, 'next'-nya kosong (nullptr).
+    newFood->prev = tail;                                // 'prev' nunjuk ke makanan terakhir yang sebelumnya ada di daftar.
+
+    if (!head) head = newFood;                           // Kalau list masih kosong, item pertama jadi 'head'.
+    if (tail) tail->next = newFood;                      // Kalau udah ada item sebelumnya, sambungin 'next' dari tail ke item baru.
+
+    tail = newFood;                                      // Item baru ini jadi item terakhir, makanya tail pindah ke sini.
+}
+
+// Cari data makanan 🍽️
+void findFood() {
+    cout << "Insert the food name you want to find\n> "; // Minta user masukin nama makanan yang mau dicari.
+    string name;                                        // Variabel buat nyimpen nama makanan yang dicari.
+    getline(cin, name);                                 // Pake 'getline' biar bisa masukin nama yang ada spasinya.
+
+    FoodData* temp = head;                              // Bikin pointer 'temp' yang mulai dari 'head' (makanan pertama di list).
+
+    while (temp) {                                      // Selama 'temp' nggak kosong, artinya masih ada makanan di list.
+        if (temp->food == name) {                       // Kalau nama makanan di 'temp' sama kayak yang dicari:
+            cout << name << "'s data found\n";           // Tampilkan pesan kalau data ditemukan.
+            displayFood(temp);                          // Panggil fungsi buat nampilin data makanan.
+            cout << "Press Enter to Continue!!\n";      // Kasih jeda biar user bisa baca datanya.
+            cin.ignore();                               // Tunggu user pencet 'Enter'.
+            return;                                     // Keluar dari fungsi karena data udah ketemu.
+        }
+        temp = temp->next;                              // Kalau belum ketemu, pindah ke makanan berikutnya di list.
+    }
+
+    cout << name << "'s data not found\n";              // Kalau sampe akhir list dan nggak ketemu, kasih pesan data nggak ada.
+    cin.ignore();                                       // Tunggu user pencet 'Enter' sebelum balik ke menu.
+}
+
+// Ubah data makanan ✏️🍕
+void changeFood() {
+    cout << "Insert the food name you want to change\n> "; // Minta user masukin nama makanan yang mau diubah.
+    string name;                                           // Variabel buat nyimpen nama makanan.
+    getline(cin, name);                                    // Pake 'getline' biar bisa masukin nama yang ada spasinya.
+
+    FoodData* temp = head;                                 // Mulai dari makanan pertama di list.
+
+    while (temp) {                                         // Selama masih ada makanan di list.
+        if (temp->food == name) {                          // Kalau ketemu makanan yang dicari:
+            cout << "- Changing " << name << "'s data\n";   // Kasih tahu kita mau ubah data makanan itu.
+            cout << "1. Change Price\n2. Change Category\n3. Change Availability\n> "; // Pilihan menu ubah data.
+            int choice;                                    // Variabel buat nyimpen pilihan user.
+            cin >> choice; cin.ignore();                   // Masukin pilihan, terus bersihin buffer.
+
+            if (choice == 1) {                             // Kalau pilih 1, ubah harga.
+                cout << "Insert the new price\n> ";         
+                cin >> temp->price; cin.ignore();           // Minta harga baru, terus simpen ke data makanan.
+            } else if (choice == 2) {                      // Kalau pilih 2, ubah kategori.
+                cout << "Insert the new category\n> ";
+                getline(cin, temp->category);               // Minta kategori baru.
+            } else if (choice == 3) {                      // Kalau pilih 3, ubah status ketersediaan.
+                cout << "Is the food available? (1 for Yes, 0 for No)\n> ";
+                cin >> temp->available; cin.ignore();       // Minta status baru (1 atau 0).
+            }
+
+            cout << name << "'s data has been updated\n";   // Kasih tahu kalau data udah berhasil diubah.
+            displayFood(temp);                             // Tampilkan data makanan yang udah diubah.
+            cout << "Press Enter to Continue!!\n";         
+            cin.ignore();                                  // Tunggu user pencet 'Enter' sebelum balik ke menu.
+            return;                                        // Keluar dari fungsi karena data udah ketemu dan diubah.
+        }
+        temp = temp->next;                                 // Kalau belum ketemu, pindah ke makanan berikutnya.
+    }
+}
+
+// Hapus data makanan 🗑️🍕
+void deleteFood() {
+    cout << "Insert the food name you want to delete\n> "; // Minta user masukin nama makanan yang mau dihapus.
+    string name;                                           // Variabel buat nyimpen nama makanan.
+    getline(cin, name);                                    // Ambil input nama makanan, termasuk kalau ada spasi.
+
+    FoodData* temp = head;                                 // Mulai dari makanan pertama di list.
+
+    while (temp) {                                         // Selama masih ada data makanan di list.
+        if (temp->food == name) {                          // Kalau ketemu makanan yang dicari:
+            displayFood(temp);                             // Tampilkan dulu data makanan biar yakin yang dihapus bener.
+            cout << "Are you sure you want to delete? (y/n)\n> "; // Konfirmasi penghapusan.
+            char confirm;                                  // Variabel buat nyimpen jawaban konfirmasi.
+            cin >> confirm; cin.ignore();                  // Ambil jawaban user, terus bersihin buffer.
+
+            if (confirm == 'y' || confirm == 'Y') {        // Kalau user jawab 'y' atau 'Y':
+                if (temp->prev) temp->prev->next = temp->next; // Sambungin node sebelumnya ke node setelahnya.
+                if (temp->next) temp->next->prev = temp->prev; // Sambungin node setelahnya ke node sebelumnya.
+
+                if (temp == head) head = temp->next;       // Kalau yang dihapus adalah 'head', pindahin 'head' ke next.
+                if (temp == tail) tail = temp->prev;       // Kalau yang dihapus adalah 'tail', pindahin 'tail' ke prev.
+
+                delete temp;                              // Hapus data makanan dari memori.
+                cout << name << "'s data has been deleted\n"; // Kasih tahu kalau data udah berhasil dihapus.
+            }
+
+            cout << "Press Enter to Continue!!\n";         // Tunggu user pencet 'Enter' sebelum balik ke menu.
+            cin.ignore();
+            return;                                       // Keluar dari fungsi karena udah selesai.
+        }
+        temp = temp->next;                                // Kalau belum ketemu, pindah ke makanan berikutnya.
+    }
+
+    cout << name << "'s data not found\n";                // Kalau sampai akhir list nggak ketemu, kasih tahu datanya nggak ada.
+    cin.ignore();                                         // Tunggu user pencet 'Enter'.
+}
+
+// Lihat semua data makanan 👀🍽️
+void seeAllFoods(bool isAdmin) {
+    current = head;                                       // Mulai dari makanan pertama di list.
+
+    while (current) {                                     // Selama masih ada makanan di list.
+        displayFood(current);                             // Tampilkan data makanan.
+
+        if (isAdmin) {                                    // Kalau yang liat adalah admin:
+            cout << "1. Next\n2. Previous\n3. Exit\n> ";   // Menu buat admin.
+        } else {                                          // Kalau yang liat adalah user:
+            cout << "1. Next\n2. Previous\n3. Order\n4. Exit\n> "; // Menu buat user (ada opsi pesan makanan).
+        }
+
+        int choice;                                       // Variabel buat nyimpen pilihan user.
+        cin >> choice; cin.ignore();                      // Ambil input pilihan dan bersihin buffer.
+
+        if (choice == 1)                                  // Kalau pilih 'Next':
+            current = current->next ? current->next : head; // Pindah ke makanan berikutnya, balik ke awal kalau mentok.
+        else if (choice == 2)                             // Kalau pilih 'Previous':
+            current = current->prev ? current->prev : tail; // Pindah ke makanan sebelumnya, balik ke akhir kalau mentok.
+        else if (!isAdmin && choice == 3) {               // Kalau user pilih 'Order' (hanya user):
+            if (!current->available) {                    // Kalau makanannya nggak tersedia:
+                cout << "Sorry, this menu is out of stock. Please choose a different one.\n"; // Kasih tahu stok habis.
+            } else {                                      // Kalau makanannya tersedia:
+                cout << "Ordering " << current->food << "...\n"; // Kasih tahu lagi mesen.
+                cout << "Order placed successfully!\n";         // Kasih tahu kalau pesanan berhasil.
+            }
+        } else break;                                     // Kalau pilih 'Exit', keluar dari loop.
+    }
+}
+
+void adminDashboard() {
+    while (true) {                                     // Loop biar dashboard terus jalan sampai admin milih keluar.
+        cout << "======================================\n";
+        cout << "ADMIN'S DASHBOARD\n";                 // Header buat dashboard admin.
+        cout << "======================================\n";
+        cout << "|1. Add Food's Data\n";               // Opsi 1: Tambah data makanan.
+        cout << "|2. Find Food's Data\n";              // Opsi 2: Cari data makanan.
+        cout << "|3. Delete Food's Data\n";            // Opsi 3: Hapus data makanan.
+        cout << "|4. Change Food's Data\n";            // Opsi 4: Ubah data makanan.
+        cout << "|5. See All Food's Data\n";           // Opsi 5: Lihat semua data makanan.
+        cout << "|6. Exit\n> ";                       // Opsi 6: Keluar dari dashboard admin.
+        
+        int choice;                                   // Variabel buat nyimpen pilihan admin.
+        cin >> choice; cin.ignore();                  // Ambil input pilihan admin dan bersihin buffer.
+
+        if (choice == 1) addFood();                   // Kalau pilih 1, jalankan fungsi tambah data makanan.
+        else if (choice == 2) findFood();             // Kalau pilih 2, jalankan fungsi cari data makanan.
+        else if (choice == 3) deleteFood();           // Kalau pilih 3, jalankan fungsi hapus data makanan.
+        else if (choice == 4) changeFood();           // Kalau pilih 4, jalankan fungsi ubah data makanan.
+        else if (choice == 5) seeAllFoods(true);      // Kalau pilih 5, lihat semua data makanan (admin mode).
+        else break;                                  // Kalau pilih 6, keluar dari loop (dashboard berhenti).
+    }
+}
+
+void orderFood() {
+    if (!head) {                                      // Kalau list makanan kosong:
+        cout << "No food available.\n";               // Kasih tahu kalau nggak ada makanan yang bisa dipesan.
+        return;                                       // Keluar dari fungsi.
+    }
+
+    string customerName, note;                        // Variabel buat nyimpen nama customer dan catatan tambahan.
+    int amount;                                       // Variabel buat nyimpen jumlah pesanan.
+
+    cout << "Enter your name: ";                      // Minta user masukin nama.
+    getline(cin, customerName);                       // Ambil input nama (termasuk kalau ada spasi).
+
+    displayFood(current);                             // Tampilkan data makanan yang lagi dipilih.
+
+    cout << "Amount to order: ";                      // Minta user masukin jumlah makanan yang mau dipesan.
+    cin >> amount; cin.ignore();                      // Ambil input jumlah dan bersihin buffer.
+
+    cout << "Add a note (optional): ";                // Kasih kesempatan buat nambahin catatan.
+    getline(cin, note);                               // Ambil input catatan.
+
+    int totalPrice = current->price * amount;         // Hitung total harga berdasarkan jumlah dan harga makanan.
+    string orderId = generateOrderId(customerName, current->food, amount, note); // Generate ID pesanan.
+
+    // Buat objek order baru, terus masukin semua data.
+    Order* newOrder = new Order{orderId, customerName, current->food, amount, totalPrice, note, nullptr};
+
+    if (!front) front = rear = newOrder;              // Kalau antrean kosong, pesanan jadi order pertama.
+    else {                                            // Kalau antrean udah ada:
+        rear->next = newOrder;                        // Sambungin pesanan baru ke belakang antrean.
+        rear = newOrder;                              // Geser 'rear' ke pesanan baru (pesanan terakhir).
+    }
+}
+cout << "Order placed successfully with ID: " << orderId << "\n";
+cout << "Press Enter to continue!!\n";
+cin.ignore();
+
+void userMenu() {
+    current = head;                                    // Mulai dari makanan pertama di list.
+    while (current) {                                  
+        if (current->available) displayFood(current);  // Tampilkan hanya makanan yang available.
+        cout << "1. Next\n2. Previous\n3. Order\n4. Exit\n> ";
+        int choice;
+        cin >> choice; cin.ignore();
+        if (choice == 1) current = current->next ? current->next : head;  // Kalau di akhir, balik ke awal.
+        else if (choice == 2) current = current->prev ? current->prev : tail; // Kalau di awal, balik ke akhir.
+        else if (choice == 3) orderFood();             // User pilih makanan dan pesan.
+        else break;                                    // Keluar kalau pilih exit.
+    }
+}
+
+void processOrder() {
+    if (!front) {                                     // Kalau antrean kosong:
+        cout << "For now, no orders have come in yet.\n";
+        return;
+    }
+
+    displayOrder(front);                              // Tampilkan pesanan pertama (FIFO).
+    cout << "1. Accept Order\n2. Reject Order\n> ";
+    int choice;
+    cin >> choice; cin.ignore();
+
+    if (choice == 1) {                                // Kalau order diterima:
+        cout << "Select payment method:\n1. QRIS\n2. Debit Card\n3. Cash\n> ";
+        int paymentChoice;
+        cin >> paymentChoice; cin.ignore();
+        cout << "Order accepted and processed successfully!\n";
+    } else {                                          // Kalau order ditolak:
+        cout << "Order rejected.\n";
+    }
+
+    Order* temp = front;                              // Hapus order pertama setelah diproses.
+    front = front->next;
+    if (!front) rear = nullptr;                       // Kalau antrean jadi kosong, reset rear.
+    delete temp;
+
+    cout << "Press Enter to continue!!\n";
+    cin.ignore();
+}
+
+void cashierDashboard() {
+    while (true) {
+        cout << "======================================\n";
+        cout << "CASHIER'S DASHBOARD\n";
+        cout << "======================================\n";
+        cout << "|1. Process Order\n";
+        cout << "|2. Exit\n> ";
+        int choice;
+        cin >> choice; cin.ignore();
+        if (choice == 1) processOrder();              // Proses order yang masuk.
+        else break;                                  // Keluar dari dashboard cashier.
+    }
+}
+
+int main() {
+    while (true) {
+        cout << "======================================\n";
+        cout << "WELCOME TO FOOD MANAGEMENT SYSTEM\n";
+        cout << "======================================\n";
+        cout << "1. Login as Admin\n2. Login as User\n3. Login as Cashier\n4. Exit\n> ";
+        int choice;
+        cin >> choice; cin.ignore();
+
+        if (choice == 1) adminDashboard();           // Login admin.
+        else if (choice == 2) userMenu();            // Login user.
+        else if (choice == 3) cashierDashboard();    // Login cashier.
+        else break;                                 // Keluar dari program.
+    }
+
+    return 0;
+}
