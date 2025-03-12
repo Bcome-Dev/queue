@@ -59,29 +59,32 @@ void displayOrder(Order* order) {                    // 'displayOrder' adalah fu
 
 // Fungsi buat generate ID pesanan sesuai format 🆔
 string generateOrderId(const string& customerName, const string& foodName, int amount, const string& note) {
-    string id = "";                                // Buat variabel 'id' kosong, nanti kita isi pelan-pelan.
-    
-    // 2 digit pertama: urutan alfabet dari huruf pertama nama customer 🧑‍🍽️
-    id += to_string(toupper(customerName[0]) - 'A' + 1); // Ambil huruf pertama nama customer, ubah jadi huruf besar pake 'toupper'.
-                                                        // Terus cari urutan alfabetnya ('A' jadi 1, 'B' jadi 2, dst.).
-    if (id.length() == 1) id = "0" + id;                 // Kalau urutannya cuma 1 digit (1-9), tambahin "0" di depan biar jadi 2 digit.
+    string id = ""; // Variabel string kosong buat nyimpen ID pesanan
 
-    // 4 digit berikutnya: ASCII dari 2 huruf pertama nama makanan 🍔
-    if (foodName.length() >= 2) {                        // Kalau nama makanan panjangnya 2 huruf atau lebih:
-        id += to_string(int(foodName[0]));               // Ambil huruf pertama, ubah ke kode ASCII.
-        id += to_string(int(foodName[1]));               // Ambil huruf kedua, ubah ke kode ASCII.
-    } else {                                            
-        id += "0000";                                    // Kalau nama makanan kurang dari 2 huruf, kasih kode "0000" biar tetap 4 digit.
+    // Mengambil urutan alfabet huruf pertama customerName
+    int customerInitialOrder = toupper(customerName[0]) - 'A' + 1; // Konversi huruf pertama nama customer jadi huruf besar, terus hitung urutannya dalam alfabet ('A' jadi 1, 'B' jadi 2, dst.)
+    id += (customerInitialOrder < 10 ? "0" : "") + to_string(customerInitialOrder); // Kalau urutannya kurang dari 10, tambahin 0 di depan biar jadi dua digit
+
+    // Mengambil urutan alfabet dua huruf pertama foodName
+    if (foodName.length() >= 2) { // Cek apakah nama makanan punya minimal 2 huruf
+        int foodInitialOrder1 = toupper(foodName[0]) - 'A' + 1; // Konversi huruf pertama nama makanan ke urutan alfabet
+        int foodInitialOrder2 = toupper(foodName[1]) - 'A' + 1; // Konversi huruf kedua nama makanan ke urutan alfabet
+        id += (foodInitialOrder1 < 10 ? "0" : "") + to_string(foodInitialOrder1); // Tambahin 0 kalau urutannya kurang dari 10, biar dua digit
+        id += (foodInitialOrder2 < 10 ? "0" : "") + to_string(foodInitialOrder2); // Sama juga buat huruf kedua
+    } else {
+        id += "0000";  // Kalau nama makanan kurang dari 2 huruf, tambahin "0000" biar format tetap konsisten
     }
 
-    // Digit ke-7: jumlah pesanan 🍽️
-    id += to_string(amount);                             // Tambahin jumlah makanan yang dipesan.
+    // Menambahkan jumlah pesanan
+    id += to_string(amount); // Langsung konversi jumlah pesanan jadi string dan gabungin ke ID
 
-    // Digit ke-8: ada/tidaknya catatan 📝
-    id += (note.empty() ? "0" : "1");                    // Kalau catatannya kosong, tambahin "0". Kalau ada catatan, tambahin "1".
+    // Menambahkan 1 jika ada note, 0 jika tidak ada note
+    id += (note.empty() ? "0" : "1"); // Kalau note kosong, tambahin "0"; kalau ada isi, tambahin "1"
 
-    return id;                                           // Setelah jadi, balikin ID pesanan yang udah lengkap.
+    return id; // Balikin ID pesanan yang udah jadi
 }
+
+
 
 // Fungsi buat tambah data makanan baru 🍕
 void addFood() {
